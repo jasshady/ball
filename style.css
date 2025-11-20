@@ -9,7 +9,6 @@ body {
     overflow: hidden;
     font-family: 'Inter', sans-serif;
     color: white;
-    /* Handles iOS dynamic address bar */
     height: 100dvh; 
 }
 
@@ -22,10 +21,21 @@ body {
     z-index: 0;
 }
 
+/* Ensure webcam is hidden and doesn't take space */
+#webcam {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+}
+
 /* Header */
 .header {
     position: fixed;
-    /* Safe area for iPhone Notch */
     top: max(2rem, env(safe-area-inset-top)); 
     left: max(2rem, env(safe-area-inset-left));
     text-align: left;
@@ -50,7 +60,6 @@ body {
 /* Color Controls */
 .color-controls {
     position: fixed;
-    /* Safe area for iPhone Notch */
     top: max(2rem, env(safe-area-inset-top));
     right: max(2rem, env(safe-area-inset-right));
     z-index: 10;
@@ -106,7 +115,6 @@ body {
 /* Input Area */
 .input-container {
     position: fixed;
-    /* Safe area for iPhone Home Bar + offset */
     bottom: max(2rem, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
@@ -140,10 +148,8 @@ input {
     border: none;
     padding: 1rem 1.25rem;
     color: white;
-    font-size: 1rem;
-    font-weight: 500;
-    /* Prevent zoom on focus in iOS */
     font-size: 16px; 
+    font-weight: 500;
 }
 
 input:focus {
@@ -191,7 +197,7 @@ button#typeBtn:active {
     }
 
     .header h1 {
-        font-size: 1.5rem; /* Smaller Title */
+        font-size: 1.5rem; 
     }
 
     .color-controls {
@@ -200,14 +206,13 @@ button#typeBtn:active {
         padding: 0.5rem;
     }
 
-    /* Compact Color Buttons for Mobile */
     .color-scheme button {
         padding: 0.4rem;
         min-width: auto;
     }
     
     .color-scheme button span {
-        display: none; /* Hide text labels on mobile */
+        display: none; 
     }
     
     .input-container {
@@ -219,6 +224,6 @@ button#typeBtn:active {
     }
 
     .button-content span {
-        display: none; /* Hide "Create" text on mobile */
+        display: none; 
     }
 }
