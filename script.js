@@ -91,7 +91,7 @@ function createTextPoints(text) {
     const ctx = canvas.getContext('2d');
     
     const fontSize = 40; 
-    const width = 1000; // Increased width to hold longer sentences
+    const width = 1200; // Slightly wider to ensure centering logic has space
     const height = 300;
 
     canvas.width = width;
@@ -103,6 +103,7 @@ function createTextPoints(text) {
     ctx.font = `900 ${fontSize}px Inter`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    // This puts the text exactly in the center of the canvas box
     ctx.fillText(text, width / 2, height / 2);
 
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -115,6 +116,7 @@ function createTextPoints(text) {
             const index = (i * width + j) * 4;
             if (pixels[index] > 128) {
                 points.push({
+                    // This math ensures 0,0 is the center of the text
                     x: (j - width / 2) * 0.15,
                     y: -(i - height / 2) * 0.15,
                     z: 0
@@ -136,8 +138,8 @@ function morphToText(text) {
     // KILL previous animations to prevent stacking
     gsap.killTweensOf(positions);
     
-    // Reset rotation
-    gsap.to(particles.rotation, { x: 0, y: 0, duration: 1 });
+    // FIX: Reset ALL rotation (including Z) to ensure text is straight
+    gsap.to(particles.rotation, { x: 0, y: 0, z: 0, duration: 1 });
 
     // Loop through EVERY particle (Heavy!)
     for (let i = 0; i < count; i++) {
@@ -230,7 +232,6 @@ function setupEventListeners() {
     const input = document.getElementById('morphText');
 
     const trigger = () => {
-        // CHANGED: Removed .toUpperCase() to allow proper casing
         const text = input.value.trim(); 
         if (text) morphToText(text);
     };
@@ -269,4 +270,3 @@ window.addEventListener('resize', () => {
 
 // Start
 init();
-
