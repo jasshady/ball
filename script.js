@@ -90,7 +90,6 @@ function createTextPoints(text) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // CHANGED: Reduced font size so long text fits on screen
     const fontSize = 40; 
     const width = 1000; // Increased width to hold longer sentences
     const height = 300;
@@ -168,7 +167,7 @@ function morphToText(text) {
         });
     }
 
-    // Go back to sphere after 6 seconds (Added 1 second extra for reading time)
+    // Go back to sphere after 6 seconds
     returnTimeout = setTimeout(morphToSphere, 6000);
 }
 
@@ -231,7 +230,8 @@ function setupEventListeners() {
     const input = document.getElementById('morphText');
 
     const trigger = () => {
-        const text = input.value.trim().toUpperCase(); // Forces Uppercase
+        // CHANGED: Removed .toUpperCase() to allow proper casing
+        const text = input.value.trim(); 
         if (text) morphToText(text);
     };
 
@@ -240,7 +240,7 @@ function setupEventListeners() {
         if (e.key === 'Enter') trigger();
     });
     
-    // CHANGED: Initial text set here
+    // Initial text set here
     setTimeout(() => morphToText("Good Morning Baby"), 1000);
 }
 
@@ -269,3 +269,4 @@ window.addEventListener('resize', () => {
 
 // Start
 init();
+
