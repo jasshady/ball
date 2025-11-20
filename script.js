@@ -239,7 +239,7 @@ function setupEventListeners() {
     });
     
     // Initial launch
-    setTimeout(() => morphToText("HELLO"), 1000);
+    setTimeout(() => morphToText("Good Morning Baby"), 1000);
 }
 
 function animate() {
@@ -266,4 +266,5 @@ window.addEventListener('resize', () => {
 });
 
 // Start
+
 init();
