@@ -18,11 +18,13 @@ function init() {
     scene.fog = new THREE.FogExp2(0x050505, 0.02);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 30;
+    
+    // Initial Camera Adjustment for Mobile/Desktop
+    adjustCamera();
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimize for high DPI screens
     document.getElementById('container').appendChild(renderer.domElement);
 
     // 2. Create Particles
@@ -35,12 +37,33 @@ function init() {
     animate();
 }
 
+function adjustCamera() {
+    // Calculate Aspect Ratio
+    const aspect = window.innerWidth / window.innerHeight;
+    
+    // RESPONSIVE LOGIC:
+    // If aspect < 1 (Portrait/Mobile), move camera back significantly to fit wide text.
+    // If aspect > 1 (Landscape/Desktop), move camera closer.
+    if (aspect < 0.7) {
+        // Very narrow phones
+        camera.position.z = 65; 
+    } else if (aspect < 1) {
+        // Tablets / Wider phones
+        camera.position.z = 50;
+    } else {
+        // Desktop
+        camera.position.z = 30;
+    }
+    
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+}
+
 function createParticles() {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
 
-    // Create initial sphere shape
     for (let i = 0; i < count; i++) {
         const point = getSpherePoint(i);
         positions[i * 3] = point.x;
@@ -91,7 +114,7 @@ function createTextPoints(text) {
     const ctx = canvas.getContext('2d');
     
     const fontSize = 40; 
-    const width = 1200; // Slightly wider to ensure centering logic has space
+    const width = 1200; 
     const height = 300;
 
     canvas.width = width;
@@ -103,20 +126,18 @@ function createTextPoints(text) {
     ctx.font = `900 ${fontSize}px Inter`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // This puts the text exactly in the center of the canvas box
     ctx.fillText(text, width / 2, height / 2);
 
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels = imageData.data;
     const points = [];
-    const step = 2; // Density
+    const step = 2; 
 
     for (let i = 0; i < height; i += step) {
         for (let j = 0; j < width; j += step) {
             const index = (i * width + j) * 4;
             if (pixels[index] > 128) {
                 points.push({
-                    // This math ensures 0,0 is the center of the text
                     x: (j - width / 2) * 0.15,
                     y: -(i - height / 2) * 0.15,
                     z: 0
@@ -127,21 +148,17 @@ function createTextPoints(text) {
     return points;
 }
 
-// --- THE HEAVY LIFTING ---
-
 function morphToText(text) {
     clearTimeout(returnTimeout);
     currentState = 'text';
     const textPoints = createTextPoints(text);
     const positions = particles.geometry.attributes.position.array;
 
-    // KILL previous animations to prevent stacking
     gsap.killTweensOf(positions);
     
-    // FIX: Reset ALL rotation (including Z) to ensure text is straight
+    // Force Z-reset to ensure text is flat and centered
     gsap.to(particles.rotation, { x: 0, y: 0, z: 0, duration: 1 });
 
-    // Loop through EVERY particle (Heavy!)
     for (let i = 0; i < count; i++) {
         const i3 = i * 3;
         let target = { x: 0, y: 0, z: 0 };
@@ -149,7 +166,6 @@ function morphToText(text) {
         if (i < textPoints.length) {
             target = textPoints[i];
         } else {
-            // Random scatter for unused particles
             const angle = Math.random() * Math.PI * 2;
             const r = 20 + Math.random() * 20;
             target.x = Math.cos(angle) * r;
@@ -157,19 +173,16 @@ function morphToText(text) {
             target.z = (Math.random() - 0.5) * 50;
         }
 
-        // INDIVIDUAL TWEEN per particle
         gsap.to(positions, {
             [i3]: target.x,
             [i3 + 1]: target.y,
             [i3 + 2]: target.z,
-            duration: 2 + Math.random(), // Random duration for swarm effect
+            duration: 2 + Math.random(),
             ease: "power3.inOut",
-            delay: Math.random() * 0.2, // Random delay
-            // We don't need onUpdate here because the main loop handles it
+            delay: Math.random() * 0.2,
         });
     }
 
-    // Go back to sphere after 6 seconds
     returnTimeout = setTimeout(morphToSphere, 6000);
 }
 
@@ -183,8 +196,6 @@ function morphToSphere() {
     for (let i = 0; i < count; i++) {
         const i3 = i * 3;
         const target = getSpherePoint(i);
-        
-        // Scatter slightly for organic feel
         const jitter = 0.5;
 
         gsap.to(positions, {
@@ -196,7 +207,6 @@ function morphToSphere() {
             delay: Math.random() * 0.2
         });
 
-        // Animate colors back to theme
         const targetColor = getThemeColor(target.x, target.y, target.z);
         gsap.to(colors, {
             [i3]: targetColor.r,
@@ -207,15 +217,11 @@ function morphToSphere() {
     }
 }
 
-// UI Interactivity
 function changeTheme(name) {
     currentTheme = themes[name];
-    
-    // Update Buttons
     document.querySelectorAll('.color-scheme button').forEach(b => b.classList.remove('active'));
     document.getElementById(`btn-${name}`).classList.add('active');
 
-    // Update Header
     const header = document.querySelector('.header h1');
     if(name === 'neon') header.style.background = 'linear-gradient(45deg, #00ff87, #60efff)';
     else if(name === 'sunset') header.style.background = 'linear-gradient(45deg, #ff8c37, #ff427a)';
@@ -224,7 +230,7 @@ function changeTheme(name) {
     header.style.webkitBackgroundClip = 'text';
     header.style.backgroundClip = 'text';
 
-    if(currentState === 'sphere') morphToSphere(); // Re-trigger to catch color change
+    if(currentState === 'sphere') morphToSphere();
 }
 
 function setupEventListeners() {
@@ -241,32 +247,23 @@ function setupEventListeners() {
         if (e.key === 'Enter') trigger();
     });
     
-    // Initial text set here
     setTimeout(() => morphToText("Good Morning Baby"), 1000);
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    
-    // Idle rotation
     if (currentState === 'sphere') {
         particles.rotation.y += 0.002;
         particles.rotation.z += 0.001;
     }
-
-    // IMPORTANT: This flag tells Three.js to upload the new positions from GSAP to the GPU
     particles.geometry.attributes.position.needsUpdate = true;
     particles.geometry.attributes.color.needsUpdate = true;
-    
     renderer.render(scene, camera);
 }
 
-// Handle resize
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    adjustCamera();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start
 init();
