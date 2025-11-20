@@ -9,6 +9,8 @@ body {
     overflow: hidden;
     font-family: 'Inter', sans-serif;
     color: white;
+    /* Handles iOS dynamic address bar */
+    height: 100dvh; 
 }
 
 #container {
@@ -23,8 +25,9 @@ body {
 /* Header */
 .header {
     position: fixed;
-    top: 2rem;
-    left: 2rem;
+    /* Safe area for iPhone Notch */
+    top: max(2rem, env(safe-area-inset-top)); 
+    left: max(2rem, env(safe-area-inset-left));
     text-align: left;
     z-index: 10;
     pointer-events: none;
@@ -47,8 +50,9 @@ body {
 /* Color Controls */
 .color-controls {
     position: fixed;
-    top: 2rem;
-    right: 2rem;
+    /* Safe area for iPhone Notch */
+    top: max(2rem, env(safe-area-inset-top));
+    right: max(2rem, env(safe-area-inset-right));
     z-index: 10;
     background: rgba(0, 0, 0, 0.3);
     padding: 1rem;
@@ -102,7 +106,8 @@ body {
 /* Input Area */
 .input-container {
     position: fixed;
-    bottom: 2rem;
+    /* Safe area for iPhone Home Bar + offset */
+    bottom: max(2rem, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
@@ -137,6 +142,8 @@ input {
     color: white;
     font-size: 1rem;
     font-weight: 500;
+    /* Prevent zoom on focus in iOS */
+    font-size: 16px; 
 }
 
 input:focus {
@@ -176,10 +183,35 @@ button#typeBtn:active {
     gap: 0.5rem;
 }
 
-@media (max-width: 640px) {
+/* Mobile Optimization */
+@media (max-width: 768px) {
+    .header {
+        top: max(1.5rem, env(safe-area-inset-top));
+        left: max(1.5rem, env(safe-area-inset-left));
+    }
+
+    .header h1 {
+        font-size: 1.5rem; /* Smaller Title */
+    }
+
+    .color-controls {
+        top: max(1.5rem, env(safe-area-inset-top));
+        right: max(1.5rem, env(safe-area-inset-right));
+        padding: 0.5rem;
+    }
+
+    /* Compact Color Buttons for Mobile */
+    .color-scheme button {
+        padding: 0.4rem;
+        min-width: auto;
+    }
+    
+    .color-scheme button span {
+        display: none; /* Hide text labels on mobile */
+    }
+    
     .input-container {
-        bottom: 1.5rem;
-        padding: 0 0.75rem;
+        bottom: max(1.5rem, env(safe-area-inset-bottom));
     }
 
     button#typeBtn {
@@ -187,6 +219,6 @@ button#typeBtn:active {
     }
 
     .button-content span {
-        display: none;
+        display: none; /* Hide "Create" text on mobile */
     }
 }
