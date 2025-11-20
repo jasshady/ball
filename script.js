@@ -4,10 +4,12 @@ let currentState = 'sphere';
 let returnTimeout;
 let faceModel;
 let video;
+// Default rotation targets
 let targetRotationX = 0;
 let targetRotationY = 0;
+// Store idle rotation to mix with face tracking
+let idleRotationY = 0; 
 
-// Themes configuration
 const themes = {
     cosmic: { h: 0.6, s: 0.7, l: 0.5 },
     neon: { h: 0.4, s: 1.0, l: 0.5 },
@@ -17,12 +19,10 @@ const themes = {
 let currentTheme = themes.cosmic;
 
 function init() {
-    // 1. Scene Setup
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x050505, 0.02);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
     adjustCamera();
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -30,67 +30,66 @@ function init() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
     document.getElementById('container').appendChild(renderer.domElement);
 
-    // 2. Create Particles
     createParticles();
-
-    // 3. Listeners
     setupEventListeners();
-
-    // 4. Start Face Tracking
     setupFaceTracking();
-
-    // 5. Start Loop
     animate();
 }
 
-// --- FACE TRACKING LOGIC ---
 async function setupFaceTracking() {
     video = document.getElementById('webcam');
 
     try {
-        // Request Camera Access
+        // Request Camera
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user' }, // Front camera
+            video: { facingMode: 'user', width: 640, height: 480 }, // Explicitly ask for size
             audio: false
         });
         video.srcObject = stream;
         
-        // Load BlazeFace Model
+        // Wait for video to actually load data
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                resolve(video);
+            };
+        });
+        
         await video.play();
+        
         faceModel = await blazeface.load();
         console.log("Face Tracking Active");
         
-        // Start Detection Loop
         detectFace();
     } catch (err) {
-        console.warn("Camera access denied or not available:", err);
+        console.warn("Camera access error:", err);
     }
 }
 
 async function detectFace() {
     if (!faceModel || !video) return;
 
+    // Estimate faces
     const predictions = await faceModel.estimateFaces(video, false);
 
     if (predictions.length > 0) {
-        // Get nose coordinates
         const start = predictions[0].topLeft;
         const end = predictions[0].bottomRight;
         const size = [end[0] - start[0], end[1] - start[1]];
         
-        // Calculate center of face relative to video size
+        // Calculate center
         const faceX = (start[0] + size[0] / 2) / video.videoWidth; 
         const faceY = (start[1] + size[1] / 2) / video.videoHeight;
 
-        // Map to Rotation (Inverted for "looking at" effect)
-        // 0.5 is center. 
-        // X Movement affects Y rotation (looking left/right)
-        // Y Movement affects X rotation (looking up/down)
-        targetRotationY = (faceX - 0.5) * 1.5; // Sensitivity 1.5
-        targetRotationX = (faceY - 0.5) * 1.0; 
+        // Map to Rotation 
+        // Increased sensitivity for better effect
+        targetRotationY = (faceX - 0.5) * 2.5; 
+        targetRotationX = (faceY - 0.5) * 1.5; 
+    } else {
+        // If no face, slowly drift back to center/neutral
+        targetRotationX = targetRotationX * 0.95;
+        targetRotationY = targetRotationY * 0.95;
     }
 
-    // Run detection again on next frame (using RequestAnimationFrame to not block)
     requestAnimationFrame(detectFace);
 }
 
@@ -204,7 +203,11 @@ function morphToText(text) {
 
     gsap.killTweensOf(positions);
     
-    // Reset GSAP rotation so manual face tracking can take over
+    // Reset tracking rotations briefly
+    targetRotationX = 0;
+    targetRotationY = 0;
+    
+    // Reset actual rotation smoothly
     gsap.to(particles.rotation, { duration: 1, x: 0, y: 0, z: 0 });
 
     for (let i = 0; i < count; i++) {
@@ -302,18 +305,35 @@ function animate() {
     requestAnimationFrame(animate);
 
     if (particles) {
+        // Calculate face tracking influence
+        // We smooth the tracking values to prevent jitter
+        const sensitivity = 0.05;
+        
         if (currentState === 'sphere') {
-            // Idle spin for sphere
-            particles.rotation.y += 0.002;
-            particles.rotation.z += 0.001;
+            // SPHERE MODE:
+            // 1. Keep continuous spinning (idleRotationY)
+            // 2. ADD face tracking offset (targetRotationY)
+            idleRotationY += 0.002; 
+            
+            // Current X matches face X
+            particles.rotation.x += (targetRotationX - particles.rotation.x) * sensitivity;
+            
+            // Current Y = Idle Spin + Face Offset
+            // We calculate the offset difference manually
+            const currentFaceOffsetY = particles.rotation.y - idleRotationY;
+            const diff = targetRotationY - currentFaceOffsetY;
+            
+            particles.rotation.y = idleRotationY + (currentFaceOffsetY + diff * sensitivity);
+            
+            // Add slight Z tilt for fun
+            particles.rotation.z += (0 - particles.rotation.z) * sensitivity;
+
         } else {
-            // FACE TRACKING MODE (Text)
-            // Smoothly interpolate current rotation towards face target
-            // This keeps the text "centered" (base 0) but tilts it slightly (offset)
-            particles.rotation.x += (targetRotationX - particles.rotation.x) * 0.05;
-            particles.rotation.y += (targetRotationY - particles.rotation.y) * 0.05;
-            // Reset Z to keep it flat horizontally
-            particles.rotation.z += (0 - particles.rotation.z) * 0.05;
+            // TEXT MODE:
+            // Stop spinning, just track face to look 3D/Holographic
+            particles.rotation.x += (targetRotationX - particles.rotation.x) * sensitivity;
+            particles.rotation.y += (targetRotationY - particles.rotation.y) * sensitivity;
+            particles.rotation.z += (0 - particles.rotation.z) * sensitivity;
         }
 
         particles.geometry.attributes.position.needsUpdate = true;
@@ -329,3 +349,4 @@ window.addEventListener('resize', () => {
 });
 
 init();
+
