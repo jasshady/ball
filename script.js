@@ -89,8 +89,10 @@ function getThemeColor(x, y, z) {
 function createTextPoints(text) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const fontSize = 60;
-    const width = 800;
+    
+    // CHANGED: Reduced font size so long text fits on screen
+    const fontSize = 40; 
+    const width = 1000; // Increased width to hold longer sentences
     const height = 300;
 
     canvas.width = width;
@@ -166,8 +168,8 @@ function morphToText(text) {
         });
     }
 
-    // Go back to sphere after 5 seconds
-    returnTimeout = setTimeout(morphToSphere, 5000);
+    // Go back to sphere after 6 seconds (Added 1 second extra for reading time)
+    returnTimeout = setTimeout(morphToSphere, 6000);
 }
 
 function morphToSphere() {
@@ -229,7 +231,7 @@ function setupEventListeners() {
     const input = document.getElementById('morphText');
 
     const trigger = () => {
-        const text = input.value.trim().toUpperCase();
+        const text = input.value.trim().toUpperCase(); // Forces Uppercase
         if (text) morphToText(text);
     };
 
@@ -238,7 +240,7 @@ function setupEventListeners() {
         if (e.key === 'Enter') trigger();
     });
     
-    // Initial launch
+    // CHANGED: Initial text set here
     setTimeout(() => morphToText("Good Morning Baby"), 1000);
 }
 
@@ -266,5 +268,4 @@ window.addEventListener('resize', () => {
 });
 
 // Start
-
 init();
