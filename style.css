@@ -21,16 +21,17 @@ body {
     z-index: 0;
 }
 
-/* Ensure webcam is hidden and doesn't take space */
+/* FIX: Give video actual size so AI can see it, but hide it visually */
 #webcam {
     position: absolute;
     top: 0;
     left: 0;
-    width: 1px;
-    height: 1px;
+    width: 640px; 
+    height: 480px;
     opacity: 0;
     pointer-events: none;
     z-index: -1;
+    visibility: hidden; /* Hides it from view but keeps it in DOM */
 }
 
 /* Header */
