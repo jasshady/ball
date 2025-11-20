@@ -2,6 +2,10 @@ let scene, camera, renderer, particles;
 const count = 12000; // 12k Particles
 let currentState = 'sphere';
 let returnTimeout;
+let faceModel;
+let video;
+let targetRotationX = 0;
+let targetRotationY = 0;
 
 // Themes configuration
 const themes = {
@@ -19,12 +23,11 @@ function init() {
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-    // Initial Camera Adjustment for Mobile/Desktop
     adjustCamera();
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimize for high DPI screens
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
     document.getElementById('container').appendChild(renderer.domElement);
 
     // 2. Create Particles
@@ -33,28 +36,73 @@ function init() {
     // 3. Listeners
     setupEventListeners();
 
-    // 4. Start Loop
+    // 4. Start Face Tracking
+    setupFaceTracking();
+
+    // 5. Start Loop
     animate();
 }
 
+// --- FACE TRACKING LOGIC ---
+async function setupFaceTracking() {
+    video = document.getElementById('webcam');
+
+    try {
+        // Request Camera Access
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' }, // Front camera
+            audio: false
+        });
+        video.srcObject = stream;
+        
+        // Load BlazeFace Model
+        await video.play();
+        faceModel = await blazeface.load();
+        console.log("Face Tracking Active");
+        
+        // Start Detection Loop
+        detectFace();
+    } catch (err) {
+        console.warn("Camera access denied or not available:", err);
+    }
+}
+
+async function detectFace() {
+    if (!faceModel || !video) return;
+
+    const predictions = await faceModel.estimateFaces(video, false);
+
+    if (predictions.length > 0) {
+        // Get nose coordinates
+        const start = predictions[0].topLeft;
+        const end = predictions[0].bottomRight;
+        const size = [end[0] - start[0], end[1] - start[1]];
+        
+        // Calculate center of face relative to video size
+        const faceX = (start[0] + size[0] / 2) / video.videoWidth; 
+        const faceY = (start[1] + size[1] / 2) / video.videoHeight;
+
+        // Map to Rotation (Inverted for "looking at" effect)
+        // 0.5 is center. 
+        // X Movement affects Y rotation (looking left/right)
+        // Y Movement affects X rotation (looking up/down)
+        targetRotationY = (faceX - 0.5) * 1.5; // Sensitivity 1.5
+        targetRotationX = (faceY - 0.5) * 1.0; 
+    }
+
+    // Run detection again on next frame (using RequestAnimationFrame to not block)
+    requestAnimationFrame(detectFace);
+}
+
 function adjustCamera() {
-    // Calculate Aspect Ratio
     const aspect = window.innerWidth / window.innerHeight;
-    
-    // RESPONSIVE LOGIC:
-    // If aspect < 1 (Portrait/Mobile), move camera back significantly to fit wide text.
-    // If aspect > 1 (Landscape/Desktop), move camera closer.
     if (aspect < 0.7) {
-        // Very narrow phones
         camera.position.z = 65; 
     } else if (aspect < 1) {
-        // Tablets / Wider phones
         camera.position.z = 50;
     } else {
-        // Desktop
         camera.position.z = 30;
     }
-    
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 }
@@ -156,8 +204,8 @@ function morphToText(text) {
 
     gsap.killTweensOf(positions);
     
-    // Force Z-reset to ensure text is flat and centered
-    gsap.to(particles.rotation, { x: 0, y: 0, z: 0, duration: 1 });
+    // Reset GSAP rotation so manual face tracking can take over
+    gsap.to(particles.rotation, { duration: 1, x: 0, y: 0, z: 0 });
 
     for (let i = 0; i < count; i++) {
         const i3 = i * 3;
@@ -252,12 +300,26 @@ function setupEventListeners() {
 
 function animate() {
     requestAnimationFrame(animate);
-    if (currentState === 'sphere') {
-        particles.rotation.y += 0.002;
-        particles.rotation.z += 0.001;
+
+    if (particles) {
+        if (currentState === 'sphere') {
+            // Idle spin for sphere
+            particles.rotation.y += 0.002;
+            particles.rotation.z += 0.001;
+        } else {
+            // FACE TRACKING MODE (Text)
+            // Smoothly interpolate current rotation towards face target
+            // This keeps the text "centered" (base 0) but tilts it slightly (offset)
+            particles.rotation.x += (targetRotationX - particles.rotation.x) * 0.05;
+            particles.rotation.y += (targetRotationY - particles.rotation.y) * 0.05;
+            // Reset Z to keep it flat horizontally
+            particles.rotation.z += (0 - particles.rotation.z) * 0.05;
+        }
+
+        particles.geometry.attributes.position.needsUpdate = true;
+        particles.geometry.attributes.color.needsUpdate = true;
     }
-    particles.geometry.attributes.position.needsUpdate = true;
-    particles.geometry.attributes.color.needsUpdate = true;
+    
     renderer.render(scene, camera);
 }
 
